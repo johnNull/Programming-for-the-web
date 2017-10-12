@@ -9,6 +9,7 @@ const NOT_FOUND = 404;
 const SERVER_ERROR = 500;
 const SEE_OTHER = 303;
 
+//initial server setup
 function serve(port, model){
 	const app = express();
 	app.locals.port = port;
@@ -17,6 +18,7 @@ function serve(port, model){
 	app.listen(port);
 }
 
+//Defines routes to take for different requests
 function routeSetup(app){
 	app.get('/users/:id', getUser(app));
 	app.delete('/users/:id', deleteUser(app));
@@ -25,11 +27,13 @@ function routeSetup(app){
 	app.put('/users/:id', putUser(app));
 }
 
+//gets url for location
 function requestUrl(req) {
 	const port = req.app.locals.port;
 	return `${req.protocol}://${req.hostname}:${port}${req.originalUrl}`;
 }
 
+//handles GET requests with users.getUser(id). Sends status codes
 function getUser(app){
 	return function(req, res){
 		const id = req.params.id;
@@ -44,10 +48,10 @@ function getUser(app){
 					res.sendStatus(NOT_FOUND);
 				});
 		}
-		//res.send('GET request to the homepage John Null');
 	};
 }
 
+//handles POST requests with users.updateUser(user). Sends status codes
 function postUser(app){
 	return function(req, res){
 		const id = req.params.id;
@@ -67,10 +71,10 @@ function postUser(app){
 					res.sendStatus(NOT_FOUND);
 				});
 		}
-		//res.send('POST request to the homepage John Null');
 	};
 }
 
+//handles PUT requests with users.put(user). Sends status codes
 function putUser(app) {
   	return function(req, res){
 		const id = req.params.id;
@@ -94,10 +98,10 @@ function putUser(app) {
 					res.sendStatus(SERVER_ERROR);
 				});
 		}
-		//res.send('PUT request to the homepage John Null');
 	};
 }
 
+//handles DELETE requests with users.deleteUser(id). Sends status codes
 function deleteUser(app){
 	return function(req, res){
 		const id = req.params.id;
@@ -112,7 +116,6 @@ function deleteUser(app){
 					res.sendStatus(NOT_FOUND);
 				});
 		}
-		//res.send('Delete request to the homepage John Null');
 	};
 }
 
