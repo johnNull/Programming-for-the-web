@@ -14,8 +14,6 @@ var ssldir;
 var authtime;
 //initial server setup
 function serve(model, opts){
-	console.log("servin");
-	//opts = JSON.parse(opts);
 	const app = express();
 	app.locals.port = opts.port;
 	app.locals.model = model;
@@ -23,18 +21,17 @@ function serve(model, opts){
 	authtime = opts.sslDir;
 	routeSetup(app);
 	https.createServer({
-		key: fs.readFileSync('.'),
-		cert: fs.readFileSync('.'),
-	}, app).listen(port);
+		key: fs.readFileSync(ssldir + '/key.pem'),
+		cert: fs.readFileSync(ssldir + '/cert.pem'),
+	}, app).listen(opts.port);
 }
 
 //Defines routes to take for different requests
 function routeSetup(app){
 	app.get('/users/:id', getUser(app));
-	app.delete('/users/:id', deleteUser(app));
 	app.use('/users/:id', bodyParser.json());
-	app.post('/users/:id', postUser(app));
-	app.put('/users/:id', putUser(app));
+	app.put('/users/:id?', putUser(app));
+	app.put('/users/:id/auth', postUser(app));
 }
 
 //gets url for location
@@ -88,12 +85,14 @@ function postUser(app){
 function putUser(app) {
   	return function(req, res){
 		const id = req.params.id;
+		const pw = req.query.pw;
 		if(typeof id === 'undefined'){
 			res.sendStatus(BAD_REQUEST);
 		}
 		else{
 			const user = req.body;
 			user._id = id;
+			user._pw = pw;
 			req.app.locals.model.users.putUser(user).
 				then(function(result){
 					if(result === 1){
