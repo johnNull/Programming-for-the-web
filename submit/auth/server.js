@@ -2,7 +2,9 @@ const express = require('express');
 const https = require('https');
 const bodyParser = require('body-parser');
 const fs = require('fs');
+const sha256 = require('js-sha256');
 
+const UNAUTHORIZED = 401;
 const OK = 200;
 const CREATED = 201;
 const NO_CONTENT = 204;
@@ -17,8 +19,8 @@ function serve(model, opts){
 	const app = express();
 	app.locals.port = opts.port;
 	app.locals.model = model;
-	ssldir = opts.authTimeout;
-	authtime = opts.sslDir;
+	ssldir = opts.sslDir;
+	authtime = opts.authTimeout;
 	routeSetup(app);
 	https.createServer({
 		key: fs.readFileSync(ssldir + '/key.pem'),
@@ -49,10 +51,16 @@ function getUser(app){
 		}
 		else{
 			req.app.locals.model.users.getUser(id).
-				then((results) => res.json(results)).
-				catch((err) => {
+				then(function(results){
+					if(results === 0)
+						res.status(NOT_FOUND).json({status: "ERROR_NOT_FOUND", info: "user " + id + " not found"});
+					else if(results === 1)
+						res.status(UNAUTHORIZED).json({status: "ERROR_UNAUTHORIZED", info: "/users/" + id + " requires a bearer authorization header"});
+					else 
+						res.json(results);
+				}).catch((err) => {
 					console.error(err);
-					res.sendStatus(NOT_FOUND);
+					res.status(NOT_FOUND).json({status: "ERROR_NOT_FOUND", info: "user " + id + " not found"});
 				});
 		}
 	};
@@ -62,16 +70,22 @@ function getUser(app){
 function postUser(app){
 	return function(req, res){
 		const id = req.params.id;
+		const pw = sha256(req.body.pw);
 		if(typeof id === 'undefined'){
 			res.sendStatus(BAD_REQUEST);
 		}
 		else{
 			const user = req.body;
 			user._id = id;
+			user.pw = pw;
 			req.app.locals.model.users.updateUser(user).
-				then(function(){
-					res.append('Location', requestUrl(req));
-					res.sendStatus(SEE_OTHER);
+				then(function(result){
+					if(result == 1)
+						res.status(OK).json({status: "OK", authToken: "tbd"});
+					else if(result == 0)
+						res.status(UNAUTHORIZED).json({status: "ERROR_UNAUTHORIZED", info: "/users/" + id + "/auth requires a valid 'pw' password query parameter"});
+					else
+						res.status(NOT_FOUND).json({status: "ERROR_NOT_FOUND", info: "user " + id + " not found"});
 				}).
 				catch((err) => {
 					console.error(err);
@@ -84,45 +98,29 @@ function postUser(app){
 //handles PUT requests with users.put(user). Sends status codes
 function putUser(app) {
   	return function(req, res){
+		console.log("in put");
 		const id = req.params.id;
-		const pw = req.query.pw;
+		const pw = sha256(req.query.pw);
 		if(typeof id === 'undefined'){
 			res.sendStatus(BAD_REQUEST);
 		}
 		else{
 			const user = req.body;
 			user._id = id;
-			user._pw = pw;
+			user.pw = pw;
 			req.app.locals.model.users.putUser(user).
 				then(function(result){
+					res.append('Location', requestUrl(req).substr(0, requestUrl(req).indexOf('?')));
 					if(result === 1){
-						res.append('Location', requestUrl(req));
-						res.sendStatus(CREATED);
+						res.status(CREATED).json({status: "CREATED", authToken: "tbd"});
 					}
-					else
-						res.sendStatus(NO_CONTENT);
+					else{
+						res.status(SEE_OTHER).json({status: "EXISTS", info: 'user ' + id + ' already exists'});
+					}
 				}).
 				catch((err) => {
 					console.error(err);
 					res.sendStatus(SERVER_ERROR);
-				});
-		}
-	};
-}
-
-//handles DELETE requests with users.deleteUser(id). Sends status codes
-function deleteUser(app){
-	return function(req, res){
-		const id = req.params.id;
-		if(typeof id === 'undefined'){
-			res.sendStatus(BAD_REQUEST);
-		}
-		else{
-			req.app.locals.model.users.deleteUser(id).
-				then(() => res.end()).
-				catch((err) => {
-					console.error(err);
-					res.sendStatus(NOT_FOUND);
 				});
 		}
 	};

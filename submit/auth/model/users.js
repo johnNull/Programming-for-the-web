@@ -6,12 +6,12 @@ function Users(db){
 Users.prototype.getUser = function(id) {
 	return this.users.find({_id:String(id)}).toArray().
 		then(function(users){
-			return new Promise(function(resolve, reject) {
+			return new Promise(function(resolve) {
 				if(users.length === 1) {
 					resolve(users[0]);
 				}
 				else{
-					reject(new Error('cannot find user ${id}'));
+					resolve(0);
 				}
 			});
 		});
@@ -33,14 +33,17 @@ Users.prototype.deleteUser = function(id){
 
 Users.prototype.updateUser = function(user){
 	const userSpec = {_id:String(user._id)};
-	return this.users.replaceOne(userSpec, user).
+	return this.users.find(userSpec).toArray().
 		then(function (result){
-			return new Promise(function(resolve, reject){
-				if(result.modifiedCount != 1){
-					reject(new Error('updated $result.modifiedCount} users'));
+			return new Promise(function(resolve){
+				if(result.length == 1 && result[0].pw === user.pw){
+					resolve(1);
+				}
+				else if (result.length == 1 && result[0].pw != user.pw){
+					resolve(0);
 				}
 				else{
-					resolve();
+					resolve(-1);
 				}
 			});
 		});
@@ -52,12 +55,7 @@ Users.prototype.putUser = function(user){
 	return this.users.find(userSpec).toArray().
 		then(function(users){
 			if(users.length > 0){
-				return db.users.replaceOne(userSpec, user).
-					then(function (result){
-						return new Promise(function(resolve){
-							resolve(0);
-						});
-					});
+				return new Promise((resolve) => resolve(0));
 			}
 			else{
 				return db.users.insertOne(user).
