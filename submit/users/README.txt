@@ -1,4 +1,1 @@
-Name:	   John Null
-B-Number:  B00510945
-Email:     jnull1@binghamton.edu
-
+Implement REST requests to create webservice to store users into a Mongo database
